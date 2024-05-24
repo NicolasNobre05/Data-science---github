@@ -8,6 +8,10 @@ local ="São Paulo"            #Colocar Cidade/Estado/Pais
 linguagem ="PHP java python"        #Colocar Linguagem de programação
 pagina = "1"          #Colocar página
 
+
+if " " in nome:
+    nome = nome.replace(" ","+")
+
 if " " in local:
     local = local.replace(" ","+") 
 
