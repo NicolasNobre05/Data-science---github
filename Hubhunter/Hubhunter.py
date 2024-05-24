@@ -31,4 +31,4 @@ if res.status_code == 200:                                        #Verifica se a
         print(f"https://github.com/search?q={cont}")
 
 else:
-    print(f"Fala ao acessar o site: {res.status_code}") 
+    print(f"Falha ao acessar o site: {res.status_code}") 
