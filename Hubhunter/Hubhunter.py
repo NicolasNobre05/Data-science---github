@@ -15,6 +15,9 @@ if " " in nome:
 if " " in local:
     local = local.replace(" ","+") 
 
+if "c++" in linguagem:
+    linguagem = "C%2B&2B
+
 if " " in linguagem:
     linguagens = linguagem.split(" ")
     linguagem_url = "+".join([f"language%3A{lang}" for lang in linguagens])
