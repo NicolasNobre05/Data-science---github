@@ -16,7 +16,7 @@ if " " in local:
     local = local.replace(" ","+") 
 
 if "c++" in linguagem:
-    linguagem = "C%2B&2B
+    linguagem = "C%2B&2B"
 
 if " " in linguagem:
     linguagens = linguagem.split(" ")
