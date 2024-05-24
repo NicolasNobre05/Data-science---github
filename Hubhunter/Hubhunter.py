@@ -12,11 +12,10 @@ pagina = "1"          #Colocar página
 if " " in nome:
     nome = nome.replace(" ","+")
 
+
 if " " in local:
     local = local.replace(" ","+") 
 
-if "c++" in linguagem:
-    linguagem = "C%2B&2B"
 
 if " " in linguagem:
     linguagens = linguagem.split(" ")
