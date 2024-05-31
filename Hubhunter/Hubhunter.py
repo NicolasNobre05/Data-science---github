@@ -4,45 +4,46 @@ import re
 import time
 
 
-nome = ""
-localidade = ""
-linguagem = "Python"
+contpag = 1
+def consultardados(nome, linguagem, localidade):
+    resultados = []
+    contpag = 0
+    if " " in nome:             #Se nome tiver espaço
+        nome = nome.replace(" ","+") #Substituir por +
 
-if " " in nome:
-    nome = nome.replace(" ","+")
+    if " " in localidade:       #Se localidade tiver espaço
+        localidade = localidade.replace(" ","+")  #Substituir por +
+
+    if "C++" in linguagem:      #Se linguagem tiver C++
+        linguagem = linguagem.replace("C++","C%2B%2B")  #Substituir por C%2B%2B 
+
+    if " " in linguagem:     #Se linguagem tiver espaço
+        linguagens = linguagem.split(" ") #Quebrar a string depois do espaço
+        for lang in linguagens: 
+            linguagem = "+".join(f"language%3A{lang}") #unir as strings quebradas com a estrutura da url
 
 
-if " " in localidade:
-    localidade = localidade.replace(" ","+") 
-
-
-if " " in linguagem:
-    linguagens = linguagem.split(" ")
-    linguagem = "+".join([f"language%3A{lang}" for lang in linguagens])
-
-link= f"https://github.com/search?q=location%3A{localidade}+language%3A{linguagem}+fullname%3A{nome}&type=users&p=1"
-
-res = requests.get(link)
-
-if res.status_code == 200:      
-    dados = BeautifulSoup(res.text, 'html.parser')
-    dados = dados.get_text()
-    pagina = re.findall(r'"page_count":(\d+)', dados) 
-    pagina = int(pagina[0])
-
-    for contpag in range(pagina + 1):
-        link= f"https://github.com/search?q=location%3A{localidade}+language%3A{linguagem}+fullname%3A{nome}&type=users&p={contpag}"
-        res = requests.get(link) 
-        if res.status_code == 200:
-            dados = BeautifulSoup(res.text, 'html.parser') 
-            dados = dados.get_text() 
-            logins = re.findall(r'"display_login":"(.*?)"', dados)        #Encontrar o padrão display login, 
-            for cont in logins: 
-                print(f"https://github.com/{cont}")
-            print(link)
-            time.sleep(1)    
+    def entrarsite(localidade, linguagem, nome, contpag): #função de construir a url, entrar no site, interpretar as informações 
+        link = f"https://github.com/search?q=location%3A{localidade}+language%3A{linguagem}+fullname%3A{nome}&type=users&p={contpag}"
+        time.sleep(1) 
+        res = requests.get(link)   #fazer requisição
+        if res.status_code == 200: #Verifica se a conexão foi bem sucedida.
+            dados = BeautifulSoup(res.text, 'html.parser') #Organizar e ler HTML
+            dados = dados.get_text()  #Remover a parte HTML
+            pagina = re.findall(r'"page_count":(\d+)', dados)   #Encontrar o padrão page_count 
+            pagina = int(pagina[0]) #Transforma a var de string para int
         else:
-            print(f"Falha ao acessar o site: {res.status_code}")
-        time.sleep(1)   
-else:
-    print(f"Falha ao acessar o site: {res.status_code}") 
+            print("Falha ao acessar o site:", res.status_code)
+            pagina, dados, link = entrarsite(localidade, linguagem, nome, contpag)
+        return pagina, dados, link #Retornar os dados
+
+    pagina, dados, link = entrarsite(localidade, linguagem, nome, contpag) #definir as variáveis 
+    print("Total de páginas:", pagina) 
+    for contpag in range(1, pagina + 1):
+        pagina, dados, link = entrarsite(localidade, linguagem, nome, contpag)
+        print(link)
+        logins = re.findall(r'"display_login":"(.*?)"', dados)
+        for cont in logins:
+            resultados.append(f"https://github.com/{cont}")
+            
+    return resultados
