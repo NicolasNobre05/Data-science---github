@@ -1,34 +1,39 @@
 import customtkinter
-from PIL import Image
 import webbrowser
-from qwqw import consultardados
+from hubhunter import consultardados
+import re
+
+def is_url(text):
+    # Verifica se o texto corresponde a um padrão de URL
+    url_pattern = re.compile(r'https?://\S+')
+    return url_pattern.match(text) is not None
 
 def on_consultar():
     # Recupera os dados dos campos de entrada
-    nome_completo = nome_entry.get()
-    linguagem_programacao = linguagem_entry.get()
-    localidade_texto = localidade_entry.get()
+    nome = nome_entry.get()
+    linguagem = linguagem_entry.get()
+    localidade = localidade_entry.get()
 
     # Chama a função de processamento com os dados
-    resultados = consultardados(nome_completo, linguagem_programacao, localidade_texto)
+    resultados = consultardados(nome, linguagem, localidade)
 
     # Limpa o conteúdo anterior da caixa de texto de resultados
     resultados_textbox.delete("1.0", "end")
 
-    # Adiciona os novos resultados na caixa de texto
-    for resultado in resultados:
-        # Adiciona o resultado à caixa de texto
-        resultados_textbox.insert("end", resultado + "\n")
-
-        # Adiciona um link clicável para cada URL encontrada
-        if resultado.startswith("https://github.com/"):
-            resultados_textbox.tag_add("link", "end-1l", "end")
-            resultados_textbox.tag_config("link", foreground="blue", underline=True)
-            resultados_textbox.tag_bind("link", "<Button-1>", lambda event, url=resultado: abrir_url(url))
+    if resultados is not None:
+        # Adiciona os novos resultados na caixa de texto
+        for resultado in resultados:
+            # Verifica se o texto é uma URL antes de adicionar a tag de link
+            if is_url(resultado):
+                resultados_textbox.insert("end", resultado + "\n", "link")
+            else:
+                resultados_textbox.insert("end", resultado + "\n")
+    else:
+        resultados_textbox.insert("end", "Nenhum resultado encontrado.\n")
 
 def abrir_url(url):
     # Abre a URL no navegador padrão
-    webbrowser.open_new(url)
+    webbrowser.open_new_tab(url)
 
 def criar_janela():
     janela = customtkinter.CTk()
@@ -66,8 +71,14 @@ def criar_janela():
 
     # Adiciona uma caixa de texto para exibir os resultados
     global resultados_textbox
-    resultados_textbox = customtkinter.CTkTextbox(master=frame_principal, width=1000, height=300, corner_radius=10, fg_color="#FFFFFF", text_color="#000000")
+    resultados_textbox = customtkinter.CTkTextbox(master=frame_principal, width=1000, height=300, corner_radius=10, fg_color="#D9D9D9", text_color="#000000")
     resultados_textbox.pack(pady=20)
+
+    # Adiciona uma tag de link clicável à caixa de texto
+    resultados_textbox.tag_config("link", foreground="blue", underline=True)
+
+    # Liga o evento de clique à função abrir_url apenas para o texto que é uma URL
+    resultados_textbox.tag_bind("link", "<Button-1>", lambda event: abrir_url(event.widget.get("current linestart", "current lineend")))
 
     janela.mainloop()
 
