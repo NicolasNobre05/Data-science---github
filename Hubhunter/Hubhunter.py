@@ -4,8 +4,6 @@ import re
 import time
 
 
-contpag = 1
-
 def consultardados(nome, linguagem, localidade):
     resultados = []
     contpag = 0
