@@ -1,79 +1,57 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-import time
-import logging
+from urllib.parse import quote
 
-def construir_url_busca(localidade, linguagem, nome, pagina):
-    base_url = "https://github.com/search"
-    query = f"q=location%3A{localidade}+language%3A{linguagem}+fullname%3A{nome}&type=users&p={pagina}"
-    return f"{base_url}?{query}"
+# Função para obter os estados e suas siglas da API do IBGE
+def get_estados():
+    url = "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
+    response = requests.get(url)
+    if response.status_code == 200:
+        estados = response.json()
+        return {estado['nome']: estado['sigla'] for estado in estados}
+    else:
+        print("Erro ao acessar a API do IBGE:", response.status_code)
+        return {}
 
-def buscar_pagina(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        if 'X-RateLimit-Remaining' in response.headers:
-            remaining = int(response.headers['X-RateLimit-Remaining'])
-            if remaining == 0:
-                reset_time = int(response.headers['X-RateLimit-Reset'])
-                wait_time = reset_time - time.time() + 1
-                logging.info(f"Limite de taxa excedido. Aguardando {wait_time} segundos.")
-                time.sleep(wait_time)
-        return response.text
-    except requests.exceptions.HTTPError as http_err:
-        logging.error(f"Ocorreu um erro HTTP: {http_err}")
-    except Exception as err:
-        logging.error(f"Ocorreu um erro: {err}")
-    return None
+# Obter dicionário de estados e siglas
+estados = get_estados()
 
-def extrair_total_paginas(html):
-    try:
-        data = BeautifulSoup(html, 'html.parser').get_text()
-        page_count = re.findall(r'"page_count":(\d+)', data)
-        return int(page_count[0]) if page_count else 1
-    except Exception as e:
-        logging.error(f"Erro ao extrair total de páginas: {e}")
-        return 1
-
-def extrair_logins_usuarios(html):
-    try:
-        data = BeautifulSoup(html, 'html.parser').get_text()
-        logins = re.findall(r'"display_login":"(.*?)"', data)
-        return logins
-    except Exception as e:
-        logging.error(f"Erro ao extrair logins de usuários: {e}")
-        return []
-
-def main(nome="", localidade="", linguagem="Python"):
-    # Substituir espaços por "+"
-    nome = nome.replace(" ", "+")
-    localidade = localidade.replace(" ", "+")
-    linguagem = "+".join([f"language%3A{lang}" for lang in linguagem.split(" ")])
-
-    # URL de busca inicial
-    url_inicial = construir_url_busca(localidade, linguagem, nome, 1)
-    html_inicial = buscar_pagina(url_inicial)
-    if not html_inicial:
-        print("Falha ao buscar a página inicial.")
-        return
-
-    total_paginas = extrair_total_paginas(html_inicial)
+def consultardados(nome, linguagem, localidade, contpag):
+    resultados = []
     
-    for pagina in range(1, total_paginas + 1):
-        url_busca = construir_url_busca(localidade, linguagem, nome, pagina)
-        html = buscar_pagina(url_busca)
-        if not html:
-            print(f"Pular a página {pagina} devido a erro na busca.")
-            continue
+    # Substituição de espaços por '+'
+    nome = nome.replace(" ", "+")
+    
+    # Substituição de estado por sigla
+    localidade = estados.get(localidade, localidade.replace(" ", "+"))
 
-        logins = extrair_logins_usuarios(html)
-        for login in logins:
-            print(f"https://github.com/{login}")
+    # Substituição de linguagens especiais
+    linguagem_map = {"C++": "C%2B%2B", "C#": "C%23"}
+    if linguagem in linguagem_map:
+        linguagem = linguagem_map[linguagem]
+    else:
+        linguagem = quote(linguagem)  # Codifica linguagem para URL
 
-        print(f"Página {pagina}/{total_paginas} concluída: {url_busca}")
-        time.sleep(1)  # Paciência para evitar limites de taxa
+    # Função para construir a URL e obter dados
+    def entrarsite(localidade, linguagem, nome, contpag):
+        link = f"https://github.com/search?q=location%3A{localidade}+language%3A{linguagem}+fullname%3A{nome}&type=users&p={contpag}"
+        try:
+            res = requests.get(link)
+            res.raise_for_status()
+            dados = BeautifulSoup(res.text, 'html.parser').get_text()
+            return dados, link
+        except requests.exceptions.RequestException as e:
+            print(f"Erro ao acessar o site: {e}")
+            return "", link
 
-if __name__ == "__main__":
-    # Parâmetros de exemplo para teste
-    main(nome="John Doe", localidade="New York", linguagem="JavaScript")
+    dados, link = entrarsite(localidade, linguagem, nome, contpag)
+
+    # Extração de avatares e logins
+    if dados:
+        avatar = re.findall(r'"avatar_url":"(.*?)"', dados)
+        logins = re.findall(r'"display_login":"(.*?)"', dados)
+        for login, avatar_url in zip(logins, avatar):
+            resultados.append(f"https://github.com/{login}, {avatar_url}")
+
+    return resultados
